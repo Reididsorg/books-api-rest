@@ -12,7 +12,7 @@ use Symfony\Component\Serializer\SerializerInterface;
 
 final class BookController extends AbstractController
 {
-    #[Route('api/books', name: 'book', methods: ['GET'])]
+    #[Route('api/books', name: 'allBook', methods: ['GET'])]
     public function getAllBooks(BookRepository $bookRepository, SerializerInterface $serializer): JsonResponse
     {
         $bookList = $bookRepository->findAll();
@@ -35,8 +35,8 @@ final class BookController extends AbstractController
 //    }
 
     // Route "AVEC le PARAMCONVERTER"
-    #[Route('/api/books/{id}', name: 'detailBook', methods: ['GET'])]
-    public function getDetailBook(Book $book, SerializerInterface $serializer): JsonResponse
+    #[Route('/api/books/{id}', name: 'book', methods: ['GET'])]
+    public function getBook(Book $book, SerializerInterface $serializer): JsonResponse
     {
         $jsonBook = $serializer->serialize($book, 'json', ['groups' => 'getBooks']);
         return new JsonResponse($jsonBook, Response::HTTP_OK, [], true);
