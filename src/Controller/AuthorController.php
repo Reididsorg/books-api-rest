@@ -35,13 +35,14 @@ final class AuthorController extends AbstractController
     #[Route('/api/authors/{id}', name: 'deleteAuthor', methods: ['DELETE'])]
     public function deleteAuthor(Author $author, EntityManagerInterface $em): JsonResponse
     {
-        // Récupération des éventuels livres liés à l'auteur et pour chacun d'eux, suppression de cet auteur.
-        $authorBooks = $author->getBooks()->toArray();
-        if (!empty($authorBooks)) {
-            foreach ($authorBooks as $book) {
-                $book->setAuthor(null);
-            }
-        }
+//        // Récupération des éventuels livres liés à l'auteur et pour chacun d'eux, suppression de cet auteur.
+//        // Permet de conserver les livres de l'auteur au lieu de le supprimer en cascade avec "#[ORM\JoinColumn(onDelete:"CASCADE")]" dans l'entité Book.
+//        $authorBooks = $author->getBooks()->toArray();
+//        if (!empty($authorBooks)) {
+//            foreach ($authorBooks as $book) {
+//                $book->setAuthor(null);
+//            }
+//        }
 
         $em->remove($author);
         $em->flush();
