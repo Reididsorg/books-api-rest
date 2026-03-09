@@ -12,7 +12,7 @@ use Symfony\Component\Serializer\SerializerInterface;
 
 final class AuthorController extends AbstractController
 {
-    #[Route('/api/authors', name: 'allAuthors')]
+    #[Route('/api/authors', name: 'getAllAuthors')]
     public function getAllAuthors(AuthorRepository $authorRepository, SerializerInterface $serializer): JsonResponse
     {
         $authorList = $authorRepository->findAll();
@@ -22,7 +22,7 @@ final class AuthorController extends AbstractController
         return new JsonResponse($jsonAuthorList, Response::HTTP_OK, [], true);
     }
 
-    #[Route('api/authors/{id}', name: 'author')]
+    #[Route('api/authors/{id}', name: 'getAuthor')]
     public function getAuthor(Author $author, SerializerInterface $serializer): JsonResponse {
         $jsonAuthor = $serializer->serialize($author, 'json', ['groups' => 'getAuthors']);
         return new JsonResponse($jsonAuthor, Response::HTTP_OK, [], true);

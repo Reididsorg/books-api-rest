@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Book;
 use App\Repository\BookRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,7 +13,7 @@ use Symfony\Component\Serializer\SerializerInterface;
 
 final class BookController extends AbstractController
 {
-    #[Route('api/books', name: 'allBook', methods: ['GET'])]
+    #[Route('api/books', name: 'getAllBooks', methods: ['GET'])]
     public function getAllBooks(BookRepository $bookRepository, SerializerInterface $serializer): JsonResponse
     {
         $bookList = $bookRepository->findAll();
@@ -35,10 +36,19 @@ final class BookController extends AbstractController
 //    }
 
     // Route "AVEC le PARAMCONVERTER"
-    #[Route('/api/books/{id}', name: 'book', methods: ['GET'])]
+    #[Route('/api/books/{id}', name: 'getBook', methods: ['GET'])]
     public function getBook(Book $book, SerializerInterface $serializer): JsonResponse
     {
         $jsonBook = $serializer->serialize($book, 'json', ['groups' => 'getBooks']);
         return new JsonResponse($jsonBook, Response::HTTP_OK, [], true);
+    }
+
+    #[Route('/api/books/{id}', name: 'deleteBook', methods: ['DELETE'])]
+    public function deleteBook(Book $book, EntityManagerInterface $em): JsonResponse
+    {
+        $em->remove($book);
+        $em->flush();
+
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 }
