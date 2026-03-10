@@ -10,10 +10,12 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 final class BookController extends AbstractController
 {
@@ -57,10 +59,19 @@ final class BookController extends AbstractController
     }
 
     #[Route('/api/books', name:"postBook", methods: ['POST'])]
-    public function postBook(Request $request, SerializerInterface $serializer, EntityManagerInterface $em, UrlGeneratorInterface $urlGenerator, AuthorRepository $authorRepository): JsonResponse
+    public function postBook(Request $request, SerializerInterface $serializer, EntityManagerInterface $em, UrlGeneratorInterface $urlGenerator, AuthorRepository $authorRepository, ValidatorInterface $validator): JsonResponse
     {
         // Création d'une nouvelle instance de l'objet Book à partir des données json de l'objet $request (grâce au ParamConverter)
         $book = $serializer->deserialize($request->getContent(), Book::class, 'json');
+
+        // Vérification des erreurs
+        $errors = $validator->validate($book);
+        if ($errors->count() > 0) {
+            // Choix 1 : Réponse renvoyant l'erreur sérialisée
+//            return new JsonResponse($serializer->serialize($errors, 'json'), Response::HTTP_BAD_REQUEST, []);
+            // Choix 2 : Réponse renvoyant l'erreur sérialisée dans une exception
+            throw new HttpException(JsonResponse::HTTP_BAD_REQUEST, $serializer->serialize($errors, 'json'));
+        }
 
         // Récupération de l'ensemble des données envoyées sous forme de tableau
         $content = $request->toArray();
@@ -83,13 +94,23 @@ final class BookController extends AbstractController
     }
 
     #[Route('/api/books/{id}', name:"putBook", methods:['PUT'])]
-    public function putBook(Request $request, SerializerInterface $serializer, Book $currentBook, EntityManagerInterface $em, AuthorRepository $authorRepository): JsonResponse
+    public function putBook(Request $request, SerializerInterface $serializer, Book $currentBook, EntityManagerInterface $em, AuthorRepository $authorRepository, ValidatorInterface $validator): JsonResponse
     {
         // Plutôt que la création d'une nouvelle instance de l'objet Book à partir des données json de l'objet $request (grâce au ParamConverter), mise à jour celui-ci
         $updatedBook = $serializer->deserialize($request->getContent(),
             Book::class,
             'json',
             [AbstractNormalizer::OBJECT_TO_POPULATE => $currentBook]);
+
+        // On vérifie les erreurs
+        $errors = $validator->validate($updatedBook);
+        if ($errors->count() > 0) {
+            // Choix 1 : Réponse renvoyant l'erreur sérialisée
+//            return new JsonResponse($serializer->serialize($errors, 'json'), Response::HTTP_BAD_REQUEST, []);
+            // Choix 2 : Réponse renvoyant l'erreur sérialisée dans une exception
+            throw new HttpException(Response::HTTP_BAD_REQUEST, $serializer->serialize($errors, 'json'));
+        }
+
         $content = $request->toArray();
         $idAuthor = $content['idAuthor'] ?? -1;
         $updatedBook->setAuthor($authorRepository->find($idAuthor));
