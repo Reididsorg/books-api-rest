@@ -17,16 +17,24 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 final class BookController extends AbstractController
 {
     #[Route('api/books', name: 'getAllBooks', methods: ['GET'])]
-    public function getAllBooks(BookRepository $bookRepository, SerializerInterface $serializer, Request $request): JsonResponse
+    public function getAllBooks(BookRepository $bookRepository, SerializerInterface $serializer, Request $request, TagAwareCacheInterface $cachePool): JsonResponse
     {
         $page = $request->query->get('page', 1);
         $limit = $request->query->get('limit', 3);
-        $bookList = $bookRepository->findAllWithPagination($page, $limit);
 
+        $idCache = "getAllBooks-" . $page . "-" . $limit;
+
+        $bookList = $cachePool->get($idCache, function (ItemInterface $item) use ($bookRepository, $page, $limit) {
+            echo("L'élément va être mis en cache ! \n");
+            $item->tag("booksCache");
+            return $bookRepository->findAllWithPagination($page, $limit);
+        });
         $jsonBookList = $serializer->serialize($bookList, 'json', ['groups' => 'getBooks']);
 
         return new JsonResponse($jsonBookList, Response::HTTP_OK, [], true);
@@ -53,8 +61,9 @@ final class BookController extends AbstractController
     }
 
     #[Route('/api/books/{id}', name: 'deleteBook', methods: ['DELETE'])]
-    public function deleteBook(Book $book, EntityManagerInterface $em): JsonResponse
+    public function deleteBook(Book $book, EntityManagerInterface $em, TagAwareCacheInterface $cachePool): JsonResponse
     {
+        $cachePool->invalidateTags(["booksCache"]);
         $em->remove($book);
         $em->flush();
 
@@ -63,7 +72,7 @@ final class BookController extends AbstractController
 
     #[Route('/api/books', name:"postBook", methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour créer un livre')]
-    public function postBook(Request $request, SerializerInterface $serializer, EntityManagerInterface $em, UrlGeneratorInterface $urlGenerator, AuthorRepository $authorRepository, ValidatorInterface $validator): JsonResponse
+    public function postBook(Request $request, SerializerInterface $serializer, EntityManagerInterface $em, UrlGeneratorInterface $urlGenerator, AuthorRepository $authorRepository, ValidatorInterface $validator, TagAwareCacheInterface $cachePool): JsonResponse
     {
         // Création d'une nouvelle instance de l'objet Book à partir des données json de l'objet $request (grâce au ParamConverter)
         $book = $serializer->deserialize($request->getContent(), Book::class, 'json');
@@ -87,6 +96,7 @@ final class BookController extends AbstractController
         // Si "find" ne trouve pas l'auteur, alors null sera retourné.
         $book->setAuthor($authorRepository->find($idAuthor));
 
+        $cachePool->invalidateTags(["booksCache"]);
         $em->persist($book);
         $em->flush();
 
@@ -98,7 +108,7 @@ final class BookController extends AbstractController
     }
 
     #[Route('/api/books/{id}', name:"putBook", methods:['PUT'])]
-    public function putBook(Request $request, SerializerInterface $serializer, Book $currentBook, EntityManagerInterface $em, AuthorRepository $authorRepository, ValidatorInterface $validator): JsonResponse
+    public function putBook(Request $request, SerializerInterface $serializer, Book $currentBook, EntityManagerInterface $em, AuthorRepository $authorRepository, ValidatorInterface $validator, TagAwareCacheInterface $cachePool): JsonResponse
     {
         // Plutôt que la création d'une nouvelle instance de l'objet Book à partir des données json de l'objet $request (grâce au ParamConverter), mise à jour celui-ci
         $updatedBook = $serializer->deserialize($request->getContent(),
@@ -119,6 +129,7 @@ final class BookController extends AbstractController
         $idAuthor = $content['idAuthor'] ?? -1;
         $updatedBook->setAuthor($authorRepository->find($idAuthor));
 
+        $cachePool->invalidateTags(["booksCache"]);
         $em->persist($updatedBook);
         $em->flush();
 
