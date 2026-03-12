@@ -6,6 +6,8 @@ use App\Entity\Book;
 use App\Repository\AuthorRepository;
 use App\Repository\BookRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use OpenApi\Attributes as OA;
+use Nelmio\ApiDocBundle\Attribute\Model;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,6 +24,31 @@ use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 final class BookController extends AbstractController
 {
+    /**
+     * Cette méthode permet de récupérer l'ensemble des livres.
+     */
+    #[OA\Response(
+        response: 200,
+        description: 'Retourne la liste des livres',
+        content: new OA\JsonContent(
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: Book::class, groups: ['getBooks']))
+        )
+    )]
+    #[OA\Parameter(
+        name: 'page',
+        description: 'La page que l\'on veut récupérer',
+        in: 'query',
+        schema: new OA\Schema(type: 'int')
+    )]
+    #[OA\Parameter(
+        name: 'limit',
+        description: 'Le nombre d\'éléments que l\'on veut récupérer',
+        in: 'query',
+        schema: new OA\Schema(type: 'int')
+    )]
+    #[OA\Tag(name: 'Books')]
+    #[Security(name: 'Bearer')]
     #[Route('api/books', name: 'getAllBooks', methods: ['GET'])]
     public function getAllBooks(BookRepository $bookRepository, SerializerInterface $serializer, Request $request, TagAwareCacheInterface $cachePool): JsonResponse
     {
@@ -31,7 +58,7 @@ final class BookController extends AbstractController
         $idCache = "getAllBooks-" . $page . "-" . $limit;
 
         $bookList = $cachePool->get($idCache, function (ItemInterface $item) use ($bookRepository, $page, $limit) {
-            echo("L'élément va être mis en cache ! \n");
+            //echo("L'élément va être mis en cache ! \n");
             $item->tag("booksCache");
             return $bookRepository->findAllWithPagination($page, $limit);
         });
